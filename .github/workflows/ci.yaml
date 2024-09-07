@@ -94,7 +94,7 @@ jobs:
     - name: Run Snyk to check Docker image for vulnerabilities
       uses: snyk/actions/docker@master
       env:
-        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        SNYK_TOKEN: ${{ secrets.SYNC_TOKEN }}
       with:
          image: ${{ env.IMAGE_NAME }}
          args: --severity-threshold=high --policy-path=.snyk
