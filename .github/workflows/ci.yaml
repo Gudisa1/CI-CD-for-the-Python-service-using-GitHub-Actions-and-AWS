@@ -77,6 +77,7 @@ jobs:
       id: repo-name
       run: |
         REPO_NAME="${GITHUB_REPOSITORY##*/}"
+        REPO_NAME=$(echo $REPO_NAME | tr '[:upper:]' '[:lower:]')
         echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
         echo "::set-output name=repo_name::$REPO_NAME"
 
