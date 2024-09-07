@@ -1,0 +1,36 @@
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Docker
+*.dockerignore
+Dockerfile
+docker-compose.yml
+*.tar
+*.tar.gz
+*.zip
+docker/
+*.log
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+
+# Logs
+*.log
