@@ -15,10 +15,10 @@ jobs:
       with:
         fetch-depth: 0 # Necessary to fetch all tags and history
 
-################################################################
-###               DETERMINE NEXT VERSION                     ###
-###   Used for creating new releases and image tags          ###
-################################################################
+    ################################################################
+    ###               DETERMINE NEXT VERSION                     ###
+    ###   Used for creating new releases and image tags          ###
+    ################################################################
 
     - name: Determine Next Version
       id: next_version
@@ -41,26 +41,26 @@ jobs:
         echo "::set-output name=tag::$NEXT_TAG"
         echo "Next version: $NEXT_TAG"
 
-################################################################
-###                     CREATE RELEASE                       ###
-###  Creating release with the tag from the previous step    ###
-################################################################
+    ################################################################
+    ###                     CREATE RELEASE                       ###
+    ###  Creating release with the tag from the previous step    ###
+    ################################################################
 
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.ACTION_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.next_version.outputs.tag }}
         release_name: Release ${{ steps.next_version.outputs.tag }}
         draft: false
         prerelease: false
 
-################################################################
-###                  BUILD DOCKER IMAGE                      ###
-###         Build Docker image from the Dockerfile           ###
-################################################################
+    ################################################################
+    ###                  BUILD DOCKER IMAGE                      ###
+    ###         Build Docker image from the Dockerfile           ###
+    ################################################################
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
@@ -76,28 +76,31 @@ jobs:
     - name: Extract repository name
       id: repo-name
       run: |
+        # Extract repository name from GITHUB_REPOSITORY and convert to lowercase
         REPO_NAME="${GITHUB_REPOSITORY##*/}"
+        REPO_NAME=$(echo "$REPO_NAME" | tr '[:upper:]' '[:lower:]')
         echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
         echo "::set-output name=repo_name::$REPO_NAME"
 
     - name: Build Docker image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: ${{ env.REPO_NAME }}
+        ECR_REPOSITORY: ${{ steps.repo-name.outputs.repo_name }}
         IMAGE_TAG: ${{ steps.next_version.outputs.tag }}
       run: |
+        # Build the Docker image with the lowercase repository name
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         echo "IMAGE_NAME=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
 
-###########################################################
-###                  PUSH IMAGE TO ECR                  ###
-###     Tag Docker image as "latest" and push to ECR    ###
-########################################################### 
+    ###########################################################
+    ###                  PUSH IMAGE TO ECR                  ###
+    ###     Tag Docker image as "latest" and push to ECR    ###
+    ########################################################### 
 
     - name: Push Docker image to Amazon ECR
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: ${{ env.REPO_NAME }}
+        ECR_REPOSITORY: ${{ steps.repo-name.outputs.repo_name }}
         IMAGE_TAG: ${{ steps.next_version.outputs.tag }}
       run: |
         # Tag the image as latest
