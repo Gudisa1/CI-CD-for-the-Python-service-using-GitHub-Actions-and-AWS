@@ -1,6 +1,15 @@
 # Use an official Python runtime as the base image
 FROM python:3.9-slim
 
+
+# Update package lists and upgrade packages
+RUN apt-get update && apt-get upgrade -y
+
+# Install dependencies
+RUN apt-get install -y \
+    zlib1g \
+    libexpat1
+
 # Set the working directory in the container
 WORKDIR /app
 
