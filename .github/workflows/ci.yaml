@@ -127,7 +127,8 @@ jobs:
         SCP_COMMAND="scp -i ec2.pem -o StrictHostKeyChecking=no"
 
         # Login to the Docker Registry (ECR) on the EC2 instance
-        $SSH_COMMAND "aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY"
+        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+
 
         # Copy docker-compose.yml to the EC2 instance
         $SCP_COMMAND docker-compose.yml $EC2_USER@$EC2_HOST:/home/$EC2_USER/docker/
