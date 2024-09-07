@@ -1,5 +1,5 @@
 name: Build and Push Docker Image to AWS ECR
-#Comment
+
 on:
   push:
     branches:
@@ -15,10 +15,10 @@ jobs:
       with:
         fetch-depth: 0 # Necessary to fetch all tags and history
 
-################################################################
-###               DETERMINE NEXT VERSION                     ###
-###   Used for creating new releases and image tags          ###
-################################################################
+    ################################################################
+    ###               DETERMINE NEXT VERSION                     ###
+    ###   Used for creating new releases and image tags          ###
+    ################################################################
 
     - name: Determine Next Version
       id: next_version
@@ -41,10 +41,10 @@ jobs:
         echo "::set-output name=tag::$NEXT_TAG"
         echo "Next version: $NEXT_TAG"
 
-################################################################
-###                     CREATE RELEASE                       ###
-###  Creating release with the tag from the previous step    ###
-################################################################
+    ################################################################
+    ###                     CREATE RELEASE                       ###
+    ###  Creating release with the tag from the previous step    ###
+    ################################################################
 
     - name: Create Release
       id: create_release
@@ -57,10 +57,10 @@ jobs:
         draft: false
         prerelease: false
 
-################################################################
-###                  BUILD DOCKER IMAGE                      ###
-###         Build Docker image from the Dockerfile           ###
-################################################################
+    ################################################################
+    ###                  BUILD DOCKER IMAGE                      ###
+    ###         Build Docker image from the Dockerfile           ###
+    ################################################################
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
@@ -90,10 +90,10 @@ jobs:
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         echo "IMAGE_NAME=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
 
-###########################################################
-###                  PUSH IMAGE TO ECR                  ###
-###     Tag Docker image as "latest" and push to ECR    ###
-########################################################### 
+    ###########################################################
+    ###                  PUSH IMAGE TO ECR                  ###
+    ###     Tag Docker image as "latest" and push to ECR    ###
+    ########################################################### 
 
     - name: Push Docker image to Amazon ECR
       env:
@@ -108,7 +108,6 @@ jobs:
         # Push the latest tag
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-
     - name: Deploy to EC2
       env:
         AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
@@ -116,29 +115,26 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         REPO_NAME: ci-cd-for-the-python-service-using-github-actions-and-aws
-        IMAGE_NAME: ***.dkr.ecr.***.amazonaws.com/ci-cd-for-the-python-service-using-github-actions-and-aws:v0.0.20
+        IMAGE_NAME: ${{ steps.login-ecr.outputs.registry }}/ci-cd-for-the-python-service-using-github-actions-and-aws:${{ steps.next_version.outputs.tag }}
         EC2_PEM_KEY: ${{ secrets.EC2_PEM_KEY }}
         EC2_HOST: ${{ secrets.EC2_HOST }}
         EC2_USER: ${{ secrets.EC2_USER }}
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: ${{ env.REPO_NAME }}
         IMAGE_TAG: ${{ steps.next_version.outputs.tag }}
-    run: |
-    # Save PEM key to a file and set permissions
+      run: |
+        # Save PEM key to a file and set permissions
         echo "$EC2_PEM_KEY" > ec2.pem
         chmod 400 ec2.pem
-    
-    # Login to the Docker Registry (ECR) on the EC2 instance
-      ssh -i ec2.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY"
-    
-    # Copy docker-compose.yml to the EC2 instance
-      scp -i ec2.pem -o StrictHostKeyChecking=no docker-compose.yml $EC2_USER@$EC2_HOST:/home/$EC2_USER/docker/
-    
-    # Pull the Docker image and run it using Docker Compose on the EC2 instance
-      ssh -i ec2.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "cd /home/$EC2_USER/docker/ && docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG && docker compose -f docker-compose.yml up -d --force-recreate"
-    
-    # Clean up the PEM key from the local machine
-      rm -f ec2.pem
-  shell: /usr/bin/bash -e {0}
-
-   
+        
+        # Login to the Docker Registry (ECR) on the EC2 instance
+        ssh -i ec2.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY"
+        
+        # Copy docker-compose.yml to the EC2 instance
+        scp -i ec2.pem -o StrictHostKeyChecking=no docker-compose.yml $EC2_USER@$EC2_HOST:/home/$EC2_USER/docker/
+        
+        # Pull the Docker image and run it using Docker Compose on the EC2 instance
+        ssh -i ec2.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "cd /home/$EC2_USER/docker/ && docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG && docker compose -f docker-compose.yml up -d --force-recreate"
+        
+        # Clean up the PEM key from the local machine
+        rm -f ec2.pem
