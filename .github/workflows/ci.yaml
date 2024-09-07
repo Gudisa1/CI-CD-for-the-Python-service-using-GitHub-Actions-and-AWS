@@ -90,6 +90,16 @@ jobs:
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         echo "IMAGE_NAME=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
 
+
+    - name: Run Snyk to check Docker image for vulnerabilities
+      uses: snyk/actions/docker@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+         image: ${{ env.IMAGE_NAME }}
+         args: --severity-threshold=high --policy-path=.snyk
+      continue-on-error: false    
+
 ###########################################################
 ###                  PUSH IMAGE TO ECR                  ###
 ###     Tag Docker image as "latest" and push to ECR    ###
