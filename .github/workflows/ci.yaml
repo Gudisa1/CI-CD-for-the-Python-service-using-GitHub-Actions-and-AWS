@@ -116,7 +116,7 @@ jobs:
         EC2_USER: ${{ secrets.EC2_USER }}
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: ${{ env.REPO_NAME }}
-        IMAGE_TAG: ${{ env.tag }}
+        IMAGE_TAG: ${{ steps.next_version.outputs.tag }}
       run: |
         # Save PEM key to a file and set permissions
         echo "$EC2_PEM_KEY" > ec2.pem
@@ -127,7 +127,7 @@ jobs:
         SCP_COMMAND="scp -i ec2.pem -o StrictHostKeyChecking=no"
 
         # Login to the Docker Registry (ECR) on the EC2 instance
-        $SSH_COMMAND "aws ecr get-login-password --region eu-west-1 | docker login --username AWS --password-stdin $ECR_REGISTRY"
+        $SSH_COMMAND "aws ecr get-login-password --region $secrets.AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY"
 
         # Copy docker-compose.yml to the EC2 instance
         $SCP_COMMAND docker-compose.yml $EC2_USER@$EC2_HOST:/home/$EC2_USER/docker/
