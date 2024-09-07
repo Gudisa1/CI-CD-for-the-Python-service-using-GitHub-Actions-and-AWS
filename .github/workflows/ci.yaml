@@ -40,7 +40,6 @@ jobs:
         # Output the next version
         echo "::set-output name=tag::$NEXT_TAG"
         echo "Next version: $NEXT_TAG"
-
     ################################################################
     ###                     CREATE RELEASE                       ###
     ###  Creating release with the tag from the previous step    ###
@@ -80,7 +79,6 @@ jobs:
         REPO_NAME=$(echo $REPO_NAME | tr '[:upper:]' '[:lower:]')
         echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
         echo "::set-output name=repo_name::$REPO_NAME"
-
     - name: Build Docker image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -89,7 +87,6 @@ jobs:
       run: |
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         echo "IMAGE_NAME=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
-
     ###########################################################
     ###                  PUSH IMAGE TO ECR                  ###
     ###     Tag Docker image as "latest" and push to ECR    ###
@@ -107,7 +104,6 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         # Push the latest tag
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-
     - name: Deploy to EC2
       env:
         AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
@@ -130,11 +126,8 @@ jobs:
         # Login to the Docker Registry (ECR) on the EC2 instance
         ssh -i ec2.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY"
         
-        # Copy docker-compose.yml to the EC2 instance
-        scp -i ec2.pem -o StrictHostKeyChecking=no docker-compose.yml $EC2_USER@$EC2_HOST:/home/$EC2_USER/docker/
-        
-        # Pull the Docker image and run it using Docker Compose on the EC2 instance
-        ssh -i ec2.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "cd /home/$EC2_USER/docker/ && docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG && docker compose -f docker-compose.yml up -d --force-recreate"
+        # Pull the Docker image and run it directly on the EC2 instance
+        ssh -i ec2.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "docker pull $IMAGE_NAME && docker run -d --name my_container $IMAGE_NAME"
         
         # Clean up the PEM key from the local machine
         rm -f ec2.pem
