@@ -1,145 +1,92 @@
-# Counter-Service CI/CD Project
 
-This project demonstrates the creation of a simple Python service called `counter-service` with a CI/CD pipeline that deploys the service to an AWS EC2 instance. The CI/CD process uses **GitHub Actions**, **Docker**, **Amazon ECR**, and **AWS EC2**, with code quality and vulnerability checks from **SonarCloud** and **Snyk**.
+# Build and Push Docker Image to AWS ECR
 
-The project was designed to illustrate DevOps best practices for deploying a Python application using GitHub Actions for Continuous Integration (CI) and Continuous Deployment (CD). It is a practical exercise for building DevOps skills.
+This project automates the process of building a Docker image from the current repository, scanning it for vulnerabilities, pushing it to Amazon Elastic Container Registry (ECR), and deploying it to an Amazon EC2 instance using GitHub Actions.
 
-## Project Overview
+## Table of Contents
 
-### Features:
-- A **Python** web service that tracks the number of POST requests and responds to GET requests with the current count.
-- **Dockerized** Python app for portability and reproducibility.
-- CI pipeline that:
-  - Runs on every push to the development branch.
-  - Builds and pushes the Docker image to **Amazon ECR**.
-  - Performs code analysis with **SonarCloud** and vulnerability scanning with **Snyk**.
-- CD pipeline that:
-  - Pulls the Docker image from **Amazon ECR**.
-  - Deploys and runs the image on an **AWS EC2** instance using **docker-compose**.
+- [Overview](#overview)
+- [Workflow Features](#workflow-features)
+- [Pre-requisites](#pre-requisites)
+- [Setting up GitHub Secrets](#setting-up-github-secrets)
+- [How It Works](#how-it-works)
+  - [SonarCloud Scan](#sonarcloud-scan)
+  - [Versioning](#versioning)
+  - [Docker Image Build and Push](#docker-image-build-and-push)
+  - [Snyk Security Scan](#snyk-security-scan)
+  - [EC2 Deployment](#ec2-deployment)
+- [Usage](#usage)
+- [License](#license)
 
-### Technologies Used:
-- **GitHub Actions**: CI/CD automation
-- **Docker**: Containerization
-- **Amazon ECR**: Private Docker image registry
-- **AWS EC2**: Hosting the service
-- **SonarCloud**: Code quality and security analysis
-- **Snyk**: Security vulnerability scanning
+## Overview
 
-## Prerequisites
+This project focuses on a CI/CD pipeline using GitHub Actions for building, testing, scanning, and deploying Docker containers. The pipeline includes quality checks like SonarCloud and Snyk for static code and vulnerability scans, ensuring high code standards before deployment.
 
-To run and deploy this project, ensure you have the following set up:
+Key steps include:
+- Building a Docker image.
+- Pushing the image to AWS ECR.
+- Deploying the Docker container on an EC2 instance.
 
-- **GitHub** account
-- **AWS** account
-- **SonarCloud** account
-- **Snyk** account
-- **AWS CLI** installed and configured on the EC2 instance
-- **Docker** and **docker-compose** installed on your local machine and EC2 instance
+## Workflow Features
 
-## Project Setup
+1. **Automated Docker Image Build**: Automatically builds the Docker image whenever there’s a push to the `development` branch.
+2. **SonarCloud Code Quality Check**: Ensures the codebase passes quality gates before the image build.
+3. **Version Tagging**: Dynamically determines the next version based on existing tags and increments the patch version.
+4. **Docker Vulnerability Scan**: Uses Snyk to check for high-severity vulnerabilities in the Docker image.
+5. **Automated Deployment**: Deploys the Docker image to an EC2 instance via SSH, utilizing Docker Compose.
 
-### 1. Create and Clone Repository
-1. Create a GitHub repository for the project and clone it locally.
+## Pre-requisites
 
-### 2. Develop the Python Web Service
-1. Create the `counter-service.py` file:
-   - Handles GET and POST requests.
-   - Persists the counter in a file using Docker volume.
-2. Test locally by running `python counter-service.py` and accessing `http://127.0.0.1:8080`.
+- An AWS account with access to ECR and EC2.
+- Docker installed on the EC2 instance.
+- GitHub repository with the appropriate AWS credentials stored as secrets.
 
-### 3. Dockerize the Application
-1. Create a `Dockerfile` and `docker-compose.yml` for the service.
-2. Build the Docker image using:
-   ```bash
-   docker build -t counter-service-local:1.0.0 .
-   ```
-3. Test the Docker container locally:
-   ```bash
-   docker run -p 8080:8080 counter-service-local:1.0.0
-   ```
+## Setting up GitHub Secrets
 
-### 4. Deploy to AWS EC2
-1. Create an Ubuntu EC2 instance.
-2. Install Docker and AWS CLI on the instance.
-3. Log in to Amazon ECR using the AWS CLI:
-   ```bash
-   aws ecr get-login-password --region <region> | docker login --username AWS --password-stdin <account-id>.dkr.ecr.<region>.amazonaws.com
-   ```
+You need to add the following secrets to your GitHub repository to allow the GitHub Actions workflow to access AWS and other services:
 
-### 5. Push Code to GitHub
-1. Push your code to a new branch in GitHub.
-2. Set up **GitHub Actions** for the CI pipeline.
+- `AWS_ACCESS_KEY_ID`: Your AWS access key.
+- `AWS_SECRET_ACCESS_KEY`: Your AWS secret access key.
+- `SONAR_TOKEN`: SonarCloud authentication token.
+- `SYNC_TOKEN`: Snyk API token for Docker image scanning.
+- `GITHUB_TOKEN`: Automatically provided by GitHub, but needs to be referenced.
+- `EC2_PEM_KEY`: Your EC2 private key to SSH into the instance.
+- `EC2_HOST`: The EC2 public IP address or domain name.
+- `EC2_USER`: The EC2 instance username (usually `ubuntu` for Ubuntu AMIs).
 
-### 6. Continuous Integration (CI)
-The CI process performs the following:
-- Creates a new release based on semantic versioning.
-- Builds the Docker image and pushes it to Amazon ECR.
-- Runs SonarCloud and Snyk scans for code quality and vulnerabilities.
+## How It Works
 
-### 7. Continuous Deployment (CD)
-The CD process:
-- Connects to the EC2 instance via SSH.
-- Pulls the Docker image from ECR.
-- Deploys and runs the service using **docker-compose**.
+### SonarCloud Scan
 
-## Dockerfile Example
+This step scans the code for bugs, code smells, and security vulnerabilities using SonarCloud. The scan connects to a pre-configured SonarCloud account and stops the workflow if any issues are detected.
 
-```dockerfile
-FROM python:3.12-slim
+### Versioning
 
-WORKDIR /app
+The workflow determines the next version of the application by analyzing existing tags in the repository. It follows the SemVer convention (e.g., v1.0.1). If no tags exist, it starts with `v0.0.0` and increments the patch version.
 
-COPY requirements.txt .
+### Docker Image Build and Push
 
-RUN pip install -r requirements.txt
+The Docker image is built from the repository’s Dockerfile. The built image is then tagged with the new version and pushed to the configured AWS ECR repository.
 
-COPY counter-service.py .
+### Snyk Security Scan
 
-EXPOSE 8080
+Before pushing the Docker image to ECR, it’s scanned for vulnerabilities using Snyk. The scan will halt the workflow if any high-severity vulnerabilities are detected.
 
-CMD ["gunicorn", "counter-service:app", "--bind", "0.0.0.0:8080"]
-```
+### EC2 Deployment
 
-## GitHub Actions CI/CD Workflow
+The Docker image is deployed on an EC2 instance using Docker Compose. The workflow logs into the EC2 instance via SSH, pulls the Docker image from ECR, and runs the container using `docker-compose.yml`.
 
-The `.github/workflows` directory contains the CI/CD workflow configuration files. The key steps are:
-1. Checkout code.
-2. Build Docker image.
-3. Push Docker image to ECR.
-4. Run SonarCloud and Snyk scans.
-5. Deploy the image to EC2 via SSH.
+## Usage
 
-### CI Example Workflow (CI.yml)
+### Triggering the Workflow
 
-```yaml
-name: Build and Push Docker image to AWS ECR
+To trigger the workflow:
+1. Make sure to push your changes to the `development` branch. The GitHub Actions workflow will automatically start, building and deploying the Docker image.
+2. Monitor the Actions tab in your GitHub repository for progress and logs.
 
-on:
-  push:
-    branches:
-      - development
+### Updating the Workflow
 
-jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Check out the repo
-      uses: actions/checkout@v2
-
-    - name: SonarCloud Scan
-      uses: SonarSource/sonarcloud-github-action@master
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-    - name: Build Docker image
-      run: |
-        docker build -t counter-service-local:1.0.0 .
-
-    - name: Push Docker image to ECR
-      run: |
-        docker push <account-id>.dkr.ecr.<region>.amazonaws.com/counter-service:latest
-```
-
+If you need to change the deployment or add new environment variables:
+1. Update the GitHub Actions YAML file (`.github/workflows/docker-build-push.yml`).
+2. Commit and push the changes to trigger the updated workflow.
 
