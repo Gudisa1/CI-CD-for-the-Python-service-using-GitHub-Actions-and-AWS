@@ -1,5 +1,5 @@
 # Use an official Python runtime as the base image
-FROM python:3.9-slim
+FROM python:3.13.0rc2-slim
 
 # Update package lists and upgrade packages
 RUN apt-get update && apt-get upgrade -y
